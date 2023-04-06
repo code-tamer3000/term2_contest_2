@@ -2,10 +2,10 @@
  
 #include <vector>
  
-class ListGraph : public IGraph {
+class MatrixGraph : public IGraph {
  public:
-  explicit ListGraph(size_t vertices_count);
-  explicit ListGraph(const IGraph* other);
+  explicit MatrixGraph(size_t vertices_count);
+  explicit MatrixGraph(const IGraph* other);
  
   void AddEdge(size_t from, size_t to) override;
  
@@ -15,7 +15,5 @@ class ListGraph : public IGraph {
   std::vector<size_t> FindAllAdjacentOut(size_t vertex) const override;
  
  private:
-  std::vector<std::vector<size_t>> in_edges_;
-  std::vector<std::vector<size_t>> out_edges_;
+  std::vector<std::vector<bool>> matrix;
 };
- 
