@@ -10,6 +10,7 @@
 
 #include <iostream> 
 #include <memory> 
+#include <stack> 
 #include <unordered_set> 
 #include <vector>
  
@@ -51,44 +52,63 @@ std::vector<size_t> SetGraph::FindAllAdjacentOut(size_t vertex) const {
   return out;
 }
 
-void DFSReverseRecursive(size_t u, const SetGraph& graph, std::vector<bool>& visited, std::vector<size_t>& to_go) {
-  visited[u] = true;
-  for (size_t v : graph.FindAllAdjacentIn(u)) {
-    if (!visited[v]) DFSReverseRecursive(v, graph, visited, to_go);
-  }
-  to_go.push_back(u);
-}
- 
-std::vector<size_t> DFSReverse(const SetGraph& graph) {
+std::vector<size_t> DefaultDFS(const SetGraph& graph) {
   std::vector<size_t> to_go;
   std::vector<bool> visited(graph.VerticesCount());
   for (size_t s = 0; s < graph.VerticesCount(); ++s) {
-    if (!visited[s]) DFSReverseRecursive(s, graph, visited, to_go);
+    if (!visited[s]) {
+      std::stack<size_t> DFSStack;
+      DFSStack.push(s);
+      visited[s] = true;
+      while (!DFSStack.empty()) {
+        size_t u = DFSStack.top(); 
+        bool already_proccesed = true;
+        for (size_t v : graph.FindAllAdjacentOut(u)) {
+          if (!visited[v]) {
+            visited[v] = true;
+            DFSStack.push(v);
+            already_proccesed = false;
+          }
+        }
+        if (already_proccesed) {
+          to_go.push_back(u);
+          DFSStack.pop();
+        }
+      }
+    }
   }
   return to_go;
 }
 
-void DFSCondense(size_t u, const SetGraph& graph, std::vector<bool>& visited, std::vector<size_t>& component, size_t current_component) {
-  visited[u] = true;
-  component[u] = current_component;
-  for (int v : graph.FindAllAdjacentOut(u)) {
-    if (!visited[v])
-      DFSCondense(v, graph, visited, component, current_component);
-  }
-}
-
 std::unique_ptr<SetGraph> Condense(const SetGraph& graph) {
-  std::vector<size_t> to_go = DFSReverse(graph);
+  std::vector<size_t> to_go = DefaultDFS(graph);
   std::vector<bool> visited(graph.VerticesCount());
   size_t current_component = 0;
   std::vector<size_t> component(graph.VerticesCount());
   for (int i = to_go.size() - 1; i >= 0; --i) {
     if (!visited[to_go[i]]) {
-      DFSCondense(to_go[i], graph, visited, component, current_component);
+      std::stack<size_t> DFSStack;
+      DFSStack.push(to_go[i]);
+      visited[to_go[i]] = true;
+      while (!DFSStack.empty()) {
+        size_t u = DFSStack.top(); 
+        bool already_proccesed = true;
+        component[u] = current_component;
+        for (size_t v : graph.FindAllAdjacentIn(u)) {
+          if (!visited[v]) {
+            visited[v] = true;
+            DFSStack.push(v);
+            already_proccesed = false;
+          }
+        }
+        if (already_proccesed) {
+          DFSStack.pop();
+        }
+      }
       ++current_component;
     }
   }
-
+  
   std::unique_ptr<SetGraph> condense = std::make_unique<SetGraph>(current_component);
   for (size_t u = 0; u < graph.VerticesCount(); ++u) {
     for (size_t v : graph.FindAllAdjacentOut(u)) {
@@ -103,36 +123,36 @@ std::unique_ptr<SetGraph> Condense(const SetGraph& graph) {
 
 size_t NumbeOfAdgesToMakeGraphStronglyConnected(const SetGraph& condense) {
     if (condense.VerticesCount() < 2) return 0;
-    int number_of_stocks = 0;
+    int number_of_sinks = 0;
     int number_of_isolated = 0;
-    int number_of_sourses = 0;
+    int number_of_sources = 0;
     for (size_t i = 0; i < condense.VerticesCount(); i++) {
         size_t in = condense.FindAllAdjacentIn(i).size();
         size_t out = condense.FindAllAdjacentOut(i).size();
         if (in == 0 && out == 0) number_of_isolated++;
-        else if (in == 0 && out != 0) number_of_sourses++;
-        else if (out == 0 && in != 0) number_of_stocks++;
+        else if (in == 0 && out != 0) number_of_sources++;
+        else if (out == 0 && in != 0) number_of_sinks++;
     }
-    return std::max(number_of_isolated + number_of_sourses, number_of_isolated + number_of_stocks);
+    return std::max(number_of_isolated + number_of_sources, number_of_isolated + number_of_sinks);
 }
 
-std::unique_ptr<SetGraph> MakeGraph() {
+SetGraph MakeGraph() {
     int n = 0;
     int m = 0;
     std::cin >> n >> m;
-    std::unique_ptr<SetGraph> graph = std::make_unique<SetGraph>(n);
+    SetGraph graph(n);
     for (size_t i = 0; i < m; i++) {
         int from = 0;
         int to = 0;
         std::cin >> from >> to;
-        graph->AddEdge(from - 1, to - 1);
+        graph.AddEdge(from - 1, to - 1);
     }
     return graph;
 }
 
 int main() {
   auto graph = MakeGraph();
-  auto condense = Condense(*graph);
+  auto condense = Condense(graph);
   std::cout << NumbeOfAdgesToMakeGraphStronglyConnected(*condense) << '\n';
   return 0;
 }
